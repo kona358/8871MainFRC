@@ -43,11 +43,17 @@ public class Robot extends TimedRobot {
 
   WPI_TalonSRX LArm_motor = new WPI_TalonSRX(8);
   WPI_TalonSRX RArm_motor = new WPI_TalonSRX(9);
+
+  WPI_VictorSPX LIntake_motor = new WPI_VictorSPX(10);
+  WPI_VictorSPX RIntake_motor = new WPI_VictorSPX(11);
+
   
   MotorControllerGroup LeftDrive = new MotorControllerGroup(L2_motor, L3_Motor, L1_motor); //defines motor groups
   MotorControllerGroup RightDrive = new MotorControllerGroup(R1_motor, R2_motor, R3_motor); 
-  MotorControllerGroup Arms = new MotorControllerGroup(LArm_motor, RArm_motor);
 
+  MotorControllerGroup Lift = new MotorControllerGroup(LArm_motor, RArm_motor);
+
+  MotorControllerGroup Intake = new MotorControllerGroup(LIntake_motor, RIntake_motor);
 
 
 
@@ -59,6 +65,8 @@ public class Robot extends TimedRobot {
 
 // motion profiling and PID
 PIDController pid = new PIDController(Constants.kP,Constants.kI,Constants.kD);
+
+
 
   //end definition
 
@@ -120,6 +128,7 @@ PIDController pid = new PIDController(Constants.kP,Constants.kI,Constants.kD);
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+  
   }
 
   /** This function is called periodically during operator control. */
@@ -129,11 +138,13 @@ PIDController pid = new PIDController(Constants.kP,Constants.kI,Constants.kD);
   // gets angle of Dpad, 0 = up , 90 = right etc. -1 = no press(?)
   int dpad = gamepad.getPOV(0); 
 
-
-    double Lstick = gamepad.getRawAxis(1)*-1; //left stick Y axis // read from 0 to 1
-    double Rstick = gamepad.getRawAxis(5);// right stick y axis
-    double Ltrigger = gamepad.getRawAxis(2); // Left trigger, analog
-    double Rtrigger = gamepad.getRawAxis(3); // right trigger, analog
+//these might need to be getRawAxis
+// raw axis arguments are 1 5 2 3 respectively
+//remember to check the Lstick and Rstick
+    double Lstick = gamepad.getLeftY()*-1; //left stick Y axis // read from 0 to 1
+    double Rstick = gamepad.getRightY();// right stick y axis
+    double LT = gamepad.getLeftTriggerAxis()*.5; // Left trigger, analog 
+    double RT = gamepad.getRightTriggerAxis()*.5; // right trigger, analog
   //drive.tankDrive(Lstick, Rstick);
 
 //checks dpad for toggles
@@ -163,19 +174,15 @@ if(dpad == 90){
 
 }
 
-System.out.println(Ltrigger);
 // L3 and R3 at same time sets drive toggles etc to default 
-//arm speed tied to axis of L2 and R2, button held plus L2 R2 goes to position if mod button is held... is this too crazy for your small mind ethan?
+if (gamepad.getRightStickButton() && gamepad.getLeftStickButton()){
+Constants.DriveDirectionToggle = false;
+Constants.DriveSpeedToggle = false;
+System.out.println("drive is regular");
+}
 
-
-/*if(Ltrigger > 0 && Rtrigger == 0){
-Arms.set(Ltrigger);
-}*/
-
-
-
-// DO WE REALLY WANT THIS THING TO FLY AROUND AT 100% by default?? need to talk to driver (which is also ???)
-  //checks booleans for dpad toggles
+// DO WE REALLY WANT THIS THING TO FLY AROUND AT 100% by default?? need to test
+ //checks booleans for dpad toggles
   if(Constants.DriveSpeedToggle == true && Constants.DriveDirectionToggle == false ){ //checks boolean. if true, run if. if false, run else
     drive.tankDrive(Lstick/2, Rstick/2);
     
@@ -192,17 +199,66 @@ Arms.set(Ltrigger);
   }
 
 
+
+//Lift controls
+//half speed currently, reference the definition
+//prints Left trigger
+//System.out.println(LT);
+
+//arm speed tied to axis of L2 and R2, mod button held plus L2 R2 goes to position... is this too crazy for your small mind ethan?
+
+//makes sure that if one button is pressed, dont raise/drop the lift
+if(RT <= .05 && LT >0 ){
+Lift.set(LT);
+}
+
+
+if(LT <= .05 && RT > .05){
+  Lift.set(-RT);
+}
+
+if (LT <= .05  && RT <= .05){
+  // STOP THE LIFT
+  Lift.stopMotor();
+  Timer.delay(.25);
+}
+
+//instead of L3 maybe do dancepad?
+// make a function for presets like, LiftHigh() and LiftLow()
+if (LT > 0 && gamepad.getLeftStickButton()){
+  //LiftLow()
+}
+
+if (RT > 0 && gamepad.getLeftStickButton()){
+  //LiftHigh()
+}
+
+
+//intake controls
+if(gamepad.getLeftBumper()){
+  Intake.set(.1);
+}
+if(gamepad.getRightBumper()){
+  Intake.set(-.1);
+
+}
+
+
+
+
 //solenoids
 pcmCompressor.disable(); //delete me for compressor 
 //do we need to set to reverse in init??
 
-  if (gamepad.getRawButton(1)){
+  if (gamepad.getAButton()){
    LeftSol.set(kForward);
+   System.out.println("forward");
    }
 
-  if (gamepad.getRawButton(2))
+  if (gamepad.getBButton())
   {
     LeftSol.set(kReverse);
+    System.out.println("backwards");
    }
 
 
